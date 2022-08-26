@@ -178,21 +178,46 @@ class NeRFDataset:
             rots = Rotation.from_matrix(np.stack([pose0[:3, :3], pose1[:3, :3]]))
             slerp = Slerp([0, 1], rots)
 
+            if self.view != 'random':
+                pose0 = nerf_matrix_to_ngp(np.array(frames[0]['transform_matrix'], dtype=np.float32), scale=self.scale, offset=self.offset)
+                pose0_rotation = Rotation.from_matrix(pose0[:3,:3])
+                pose0_xyz_angle = pose0_rotation.as_euler("xyz", degrees=True)
+                pose1_xyz_angle = []
+                pose2_xyz_angle = []
+                if self.view == 'yaw':
+                    pose1_xyz_angle = [pose0_xyz_angle[0]+180, pose0_xyz_angle[1], pose0_xyz_angle[2]]
+                    pose2_xyz_angle = [pose0_xyz_angle[0]-180, pose0_xyz_angle[1], pose0_xyz_angle[2]]
+                elif self.view == 'pitch':
+                    pose1_xyz_angle = [pose0_xyz_angle[0]+180, pose0_xyz_angle[1], pose0_xyz_angle[2]]
+                    pose2_xyz_angle = [pose0_xyz_angle[0]-180, pose0_xyz_angle[1], pose0_xyz_angle[2]]
+                elif self.view == 'roll':
+                    pose1_xyz_angle = [pose0_xyz_angle[0], pose0_xyz_angle[1]+180, pose0_xyz_angle[2]]
+                    pose2_xyz_angle = [pose0_xyz_angle[0], pose0_xyz_angle[1]-180, pose0_xyz_angle[2]]
+                pose1 = Rotation.from_euler('xyz', pose1_xyz_angle, degrees=True).as_matrix() # +180
+                pose2 = Rotation.from_euler('xyz', pose2_xyz_angle, degrees=True).as_matrix() # -180               
+                rots = Rotation.from_matrix(np.stack([pose0[:3, :3], pose1]))
+                slerp = Slerp([0, 1], rots)
+
             self.poses = []
             self.images = None
+            r = np.linalg.norm([pose0[1,3],pose0[2,3]])
             for i in range(n_test + 1):
+                ratio = np.sin(((i / n_test) - 0.5) * np.pi) * 0.5 + 0.5
+                pose = np.eye(4, dtype=np.float32)
+                pose[:3, :3] = slerp(ratio).as_matrix()
+                print(pose)
+                print(pose0)
+                print(pose1)
                 if self.view == 'yaw':
-
-                elif self.view == 'pitch':
-
-                elif self.view == 'roll':
-
-                else:
-                    ratio = np.sin(((i / n_test) - 0.5) * np.pi) * 0.5 + 0.5
-                    pose = np.eye(4, dtype=np.float32)
-                    pose[:3, :3] = slerp(ratio).as_matrix()
-                    pose[:3, 3] = (1 - ratio) * pose0[:3, 3] + ratio * pose1[:3, 3]
-                    self.poses.append(pose)
+                    angel = (i/n_test)*2*np.pi
+                    #x = r*np.sin(angel)
+                    x = pose0[0, 3]
+                    #y = pose0[1,3]
+                    y = r*np.sin(angel)
+                    z = r*np.cos(angel)
+                    pose[:3,3] = np.array([x,y,z])
+                    pose[:3,3] = pose0[:3,3]
+                self.poses.append(pose)
 
         else:
             # for colmap, manually split a valid set (the first frame).
