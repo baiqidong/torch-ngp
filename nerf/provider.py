@@ -111,6 +111,12 @@ class NeRFDataset:
 
         self.rand_pose = opt.rand_pose
 
+        self.duration = opt.duration
+        self.fps = opt.fps
+        self.view = opt.view
+
+        n_test = self.duration * self.fps
+
         # auto-detect transforms.json and split mode.
         if os.path.exists(os.path.join(self.root_path, 'transforms.json')):
             self.mode = 'colmap' # manually split, use view-interpolation for test.
@@ -175,11 +181,18 @@ class NeRFDataset:
             self.poses = []
             self.images = None
             for i in range(n_test + 1):
-                ratio = np.sin(((i / n_test) - 0.5) * np.pi) * 0.5 + 0.5
-                pose = np.eye(4, dtype=np.float32)
-                pose[:3, :3] = slerp(ratio).as_matrix()
-                pose[:3, 3] = (1 - ratio) * pose0[:3, 3] + ratio * pose1[:3, 3]
-                self.poses.append(pose)
+                if self.view == 'yaw':
+
+                elif self.view == 'pitch':
+
+                elif self.view == 'roll':
+
+                else:
+                    ratio = np.sin(((i / n_test) - 0.5) * np.pi) * 0.5 + 0.5
+                    pose = np.eye(4, dtype=np.float32)
+                    pose[:3, :3] = slerp(ratio).as_matrix()
+                    pose[:3, 3] = (1 - ratio) * pose0[:3, 3] + ratio * pose1[:3, 3]
+                    self.poses.append(pose)
 
         else:
             # for colmap, manually split a valid set (the first frame).

@@ -32,6 +32,11 @@ if __name__ == '__main__':
     parser.add_argument('--max_ray_batch', type=int, default=4096, help="batch size of rays at inference to avoid OOM (only valid when NOT using --cuda_ray)")
     parser.add_argument('--patch_size', type=int, default=1, help="[experimental] render patches in training, so as to apply LPIPS loss. 1 means disabled, use [64, 32, 16] to enable")
 
+    ### test options
+    parser.add_argument('--pfs', type=int, default=25, help="test video fps")
+    parser.add_argument('--duration', type=int, default=5, help="video duration second")
+    parser.add_argument('--view', type=str, default='yaw', help="view direction:pitch yaw roll")
+
     ### network backbone options
     parser.add_argument('--fp16', action='store_true', help="use amp mixed precision training")
     parser.add_argument('--ff', action='store_true', help="use fully-fused MLP")
