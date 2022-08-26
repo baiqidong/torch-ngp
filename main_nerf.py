@@ -11,7 +11,7 @@ from loss import huber_loss
 #torch.autograd.set_detect_anomaly(True)
 
 if __name__ == '__main__':
-
+    print('[TIMESTAMP] start time:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str)
     parser.add_argument('-O', action='store_true', help="equals --fp16 --cuda_ray --preload")
@@ -34,9 +34,12 @@ if __name__ == '__main__':
     parser.add_argument('--patch_size', type=int, default=1, help="[experimental] render patches in training, so as to apply LPIPS loss. 1 means disabled, use [64, 32, 16] to enable")
 
     ### test options
-    parser.add_argument('--fps', type=int, default=25, help="test video fps")
-    parser.add_argument('--duration', type=int, default=5, help="video duration second")
-    parser.add_argument('--view', type=str, default='yaw', help="view direction:random pitch yaw roll")
+    parser.add_argument('--fps', type=int, default=15, help="test video fps")
+    parser.add_argument('--duration', type=int, default=10, help="video duration second")
+    parser.add_argument('--view', type=str, default='yaw', help="view direction:random or yaw")
+
+    ### evaluate options
+    parser.add_argument('--eval_interval', type=int, default=5, help="eval_interval")
 
     ### network backbone options
     parser.add_argument('--fp16', action='store_true', help="use amp mixed precision training")
@@ -125,25 +128,29 @@ if __name__ == '__main__':
         
         else:
             test_loader = NeRFDataset(opt, device=device, type='test').dataloader()
+            print('[TIMESTAMP] load data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
             if test_loader.has_gt:
                 trainer.evaluate(test_loader) # blender has gt, so evaluate it.
-    
+                print('[TIMESTAMP] evaluate end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
             trainer.test(test_loader, write_video=True) # test and save video
-            
+            print('[TIMESTAMP] test end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
             trainer.save_mesh(resolution=256, threshold=10)
-    
+            print('[TIMESTAMP] save mesh end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     else:
 
         optimizer = lambda model: torch.optim.Adam(model.get_params(opt.lr), betas=(0.9, 0.99), eps=1e-15)
 
         train_loader = NeRFDataset(opt, device=device, type='train').dataloader()
+        print('[TIMESTAMP] load data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
         # decay to 0.1 * init_lr at last iter step
         scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter / opt.iters, 1))
 
         metrics = [PSNRMeter(), LPIPSMeter(device=device)]
-        trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=50)
+        trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=opt.eval_interval)
 
         if opt.gui:
             gui = NeRFGUI(opt, trainer, train_loader)
@@ -157,13 +164,17 @@ if __name__ == '__main__':
                 max_epoch = opt.epochs
 
             trainer.train(train_loader, valid_loader, max_epoch)
+            print('[TIMESTAMP] trainning end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
             # also test
             test_loader = NeRFDataset(opt, device=device, type='test').dataloader()
             
             if test_loader.has_gt:
                 trainer.evaluate(test_loader) # blender has gt, so evaluate it.
-            
+                print('[TIMESTAMP] evaluate end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
             trainer.test(test_loader, write_video=True) # test and save video
-            
+            print('[TIMESTAMP] test end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
             trainer.save_mesh(resolution=256, threshold=10)
+            print('[TIMESTAMP] save mesh  end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
