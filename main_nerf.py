@@ -21,6 +21,7 @@ if __name__ == '__main__':
 
     ### training options
     parser.add_argument('--iters', type=int, default=30000, help="training iters")
+    parser.add_argument('--epochs', type=int, default=-1, help="training epochs")
     parser.add_argument('--lr', type=float, default=1e-2, help="initial learning rate")
     parser.add_argument('--ckpt', type=str, default='latest')
     parser.add_argument('--num_rays', type=int, default=4096, help="num rays sampled per image for each training step")
@@ -152,6 +153,9 @@ if __name__ == '__main__':
             valid_loader = NeRFDataset(opt, device=device, type='val', downscale=1).dataloader()
 
             max_epoch = np.ceil(opt.iters / len(train_loader)).astype(np.int32)
+            if opt.epochs != -1:
+                max_epoch = opt.epochs
+
             trainer.train(train_loader, valid_loader, max_epoch)
 
             # also test
