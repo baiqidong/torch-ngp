@@ -200,15 +200,14 @@ class NeRFDataset:
 
             self.poses = []
             self.images = None
-            r = np.linalg.norm([pose0[1,3],pose0[2,3]])
             for i in range(n_test + 1):
                 ratio = np.sin(((i / n_test) - 0.5) * np.pi) * 0.5 + 0.5
                 pose = np.eye(4, dtype=np.float32)
                 pose[:3, :3] = slerp(ratio).as_matrix()
-                print(pose)
-                print(pose0)
-                print(pose1)
+                pose[:3, 3] = (1 - ratio) * pose0[:3, 3] + ratio * pose1[:3, 3]
+
                 if self.view == 'yaw':
+                    r = np.linalg.norm([pose0[1,3],pose0[2,3]])
                     angel = (i/n_test)*2*np.pi
                     #x = r*np.sin(angel)
                     x = pose0[0, 3]
@@ -217,6 +216,7 @@ class NeRFDataset:
                     z = r*np.cos(angel)
                     pose[:3,3] = np.array([x,y,z])
                     pose[:3,3] = pose0[:3,3]
+
                 self.poses.append(pose)
 
         else:

@@ -35,7 +35,7 @@ if __name__ == '__main__':
     ### test options
     parser.add_argument('--fps', type=int, default=25, help="test video fps")
     parser.add_argument('--duration', type=int, default=5, help="video duration second")
-    parser.add_argument('--view', type=str, default='yaw', help="view direction:random pitch yaw roll")
+    parser.add_argument('--view', type=str, default='random', help="view direction:random pitch yaw roll")
 
     ### network backbone options
     parser.add_argument('--fp16', action='store_true', help="use amp mixed precision training")
