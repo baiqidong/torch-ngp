@@ -58,6 +58,10 @@ if __name__ == '__main__':
     parser.add_argument('--density_thresh', type=float, default=10, help="threshold for density grid to be occupied")
     parser.add_argument('--bg_radius', type=float, default=-1, help="if positive, use a background model at sphere(bg_radius)")
 
+    ### hash parameter
+    parser.add_argument('--num_levels', type=int, default=16, help="hash number of levels")
+    parser.add_argument('--log2_hashmap_size', type=int, default=19, help="hash map size of log2")
+
     ### GUI options
     parser.add_argument('--gui', action='store_true', help="start a GUI")
     parser.add_argument('--W', type=int, default=1920, help="GUI width")
@@ -107,6 +111,8 @@ if __name__ == '__main__':
         min_near=opt.min_near,
         density_thresh=opt.density_thresh,
         bg_radius=opt.bg_radius,
+        num_levels=opt.num_levels,
+        log2_hashmap_size=opt.log2_hashmap_size,
     )
     
     print(model)
