@@ -307,7 +307,7 @@ __global__ void kernel_grid_backward(
         } else {
             #pragma unroll
             for (uint32_t c = 0; c < N_C; c++) {
-                atomicAdd(&grad_grid[index + c], w * grad_cur[c]);
+                atomicAdd((float*)&grad_grid[index + c], (float)(w * grad_cur[c]));
             }
         }
     }    
