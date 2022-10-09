@@ -31,6 +31,56 @@ from torch_ema import ExponentialMovingAverage
 from packaging import version as pver
 import lpips
 
+from math import exp
+from torch.autograd import Variable
+
+
+try:
+    from skimage.measure import compare_ssim
+except:
+    from skimage.metrics import structural_similarity
+
+    def compare_ssim(gt, img, win_size, multichannel=True):
+        return structural_similarity(gt, img, win_size=win_size, multichannel=multichannel)
+
+
+def gaussian(window_size, sigma):
+    gauss = torch.Tensor([exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
+    return gauss / gauss.sum()
+
+
+def create_window(window_size, channel):
+    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+    return window
+
+
+def ssim(img1, img2, window_size=11, size_average=True):
+    (_, channel, _, _) = img1.size()
+    window = create_window(window_size, channel).cuda()
+    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+    mu1_mu2 = mu1 * mu2
+
+    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
+    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+    sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
+
+    C1 = 0.01 ** 2
+    C2 = 0.03 ** 2
+
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+
+    if size_average:
+        return ssim_map.mean()
+    else:
+        return ssim_map.mean(1).mean(1).mean(1)
+
+
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
     if pver.parse(torch.__version__) < pver.parse('1.10'):
@@ -192,7 +242,7 @@ def extract_geometry(bound_min, bound_max, resolution, threshold, query_func):
     u = extract_fields(bound_min, bound_max, resolution, query_func)
 
     #print(u.shape, u.max(), u.min(), np.percentile(u, 50))
-    
+
     vertices, triangles = mcubes.marching_cubes(u, threshold)
 
     b_max_np = bound_max.detach().cpu().numpy()
@@ -896,6 +946,7 @@ class Trainer(object):
         with torch.no_grad():
             self.local_step = 0
 
+            ssim_values = []
             for data in loader:    
                 self.local_step += 1
 
@@ -950,6 +1001,12 @@ class Trainer(object):
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                     pbar.update(loader.batch_size)
 
+                    # ssimv = ssim(preds, truths)
+                    # ssim_values.append(float(ssimv))
+                    img = np.squeeze(preds.cpu().numpy(), axis=0)
+                    gt = np.squeeze(truths.cpu().numpy(), axis=0)
+                    val = compare_ssim(gt, img, 11, multichannel=True)
+                    ssim_values.append(float(val))
 
         average_loss = total_loss / self.local_step
         self.stats["valid_loss"].append(average_loss)
@@ -971,6 +1028,7 @@ class Trainer(object):
         if self.ema is not None:
             self.ema.restore()
 
+        self.log(f"++> Test set average SSIM: {np.array(ssim_values).mean()}")
         self.log(f"++> Evaluate epoch {self.epoch} Finished.")
 
     def save_checkpoint(self, name=None, full=False, best=False, remove_old=True):
