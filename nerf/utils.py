@@ -31,6 +31,15 @@ from torch_ema import ExponentialMovingAverage
 from packaging import version as pver
 import lpips
 
+
+try:
+    from skimage.measure import compare_ssim
+except:
+    from skimage.metrics import structural_similarity
+
+    def compare_ssim(gt, img, win_size, multichannel=True):
+        return structural_similarity(gt, img, win_size=win_size, multichannel=multichannel)
+
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
     if pver.parse(torch.__version__) < pver.parse('1.10'):
@@ -200,6 +209,45 @@ def extract_geometry(bound_min, bound_max, resolution, threshold, query_func):
 
     vertices = vertices / (resolution - 1.0) * (b_max_np - b_min_np)[None, :] + b_min_np[None, :]
     return vertices, triangles
+
+
+class SSIMMeter:
+    def __init__(self):
+        self.V = 0
+        self.N = 0
+
+    def clear(self):
+        self.V = 0
+        self.N = 0
+
+    def prepare_inputs(self, *inputs):
+        outputs = []
+        for i, inp in enumerate(inputs):
+            if torch.is_tensor(inp):
+                inp = inp.detach().cpu().numpy()
+            outputs.append(inp)
+
+        return outputs
+
+    def update(self, preds, truths):
+        preds, truths = self.prepare_inputs(preds, truths)  # [B, N, 3] or [B, H, W, 3], range[0, 1]
+
+        # simplified since max_pixel_value is 1 here.
+        img = np.squeeze(preds, axis=0)
+        gt = np.squeeze(truths, axis=0)
+        ssim = compare_ssim(gt, img, 11, multichannel=True)
+
+        self.V += ssim
+        self.N += 1
+
+    def measure(self):
+        return self.V / self.N
+
+    def write(self, writer, global_step, prefix=""):
+        writer.add_scalar(os.path.join(prefix, "SSIM"), self.measure(), global_step)
+
+    def report(self):
+        return f'SSIM = {self.measure():.6f}'
 
 
 class PSNRMeter:
