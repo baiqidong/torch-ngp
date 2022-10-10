@@ -31,10 +31,6 @@ from torch_ema import ExponentialMovingAverage
 from packaging import version as pver
 import lpips
 
-from math import exp
-from torch.autograd import Variable
-
-
 try:
     from skimage.measure import compare_ssim
 except:
@@ -42,43 +38,6 @@ except:
 
     def compare_ssim(gt, img, win_size, multichannel=True):
         return structural_similarity(gt, img, win_size=win_size, multichannel=multichannel)
-
-
-def gaussian(window_size, sigma):
-    gauss = torch.Tensor([exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
-    return gauss / gauss.sum()
-
-
-def create_window(window_size, channel):
-    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
-    return window
-
-
-def ssim(img1, img2, window_size=11, size_average=True):
-    (_, channel, _, _) = img1.size()
-    window = create_window(window_size, channel).cuda()
-    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
-    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
-
-    mu1_sq = mu1.pow(2)
-    mu2_sq = mu2.pow(2)
-    mu1_mu2 = mu1 * mu2
-
-    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
-    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
-    sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
-
-    C1 = 0.01 ** 2
-    C2 = 0.03 ** 2
-
-    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-
-    if size_average:
-        return ssim_map.mean()
-    else:
-        return ssim_map.mean(1).mean(1).mean(1)
 
 
 def custom_meshgrid(*args):
@@ -251,6 +210,44 @@ def extract_geometry(bound_min, bound_max, resolution, threshold, query_func):
     vertices = vertices / (resolution - 1.0) * (b_max_np - b_min_np)[None, :] + b_min_np[None, :]
     return vertices, triangles
 
+
+class SSIMMeter:
+    def __init__(self):
+        self.V = 0
+        self.N = 0
+
+    def clear(self):
+        self.V = 0
+        self.N = 0
+
+    def prepare_inputs(self, *inputs):
+        outputs = []
+        for i, inp in enumerate(inputs):
+            if torch.is_tensor(inp):
+                inp = inp.detach().cpu().numpy()
+            outputs.append(inp)
+
+        return outputs
+
+    def update(self, preds, truths):
+        preds, truths = self.prepare_inputs(preds, truths)  # [B, N, 3] or [B, H, W, 3], range[0, 1]
+
+        # simplified since max_pixel_value is 1 here.
+        img = np.squeeze(preds, axis=0)
+        gt = np.squeeze(truths, axis=0)
+        ssim = compare_ssim(gt, img, 11, multichannel=True)
+
+        self.V += ssim
+        self.N += 1
+
+    def measure(self):
+        return self.V / self.N
+
+    def write(self, writer, global_step, prefix=""):
+        writer.add_scalar(os.path.join(prefix, "SSIM"), self.measure(), global_step)
+
+    def report(self):
+        return f'SSIM = {self.measure():.6f}'
 
 class PSNRMeter:
     def __init__(self):
@@ -946,7 +943,6 @@ class Trainer(object):
         with torch.no_grad():
             self.local_step = 0
 
-            ssim_values = []
             for data in loader:    
                 self.local_step += 1
 
@@ -1001,12 +997,6 @@ class Trainer(object):
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                     pbar.update(loader.batch_size)
 
-                    # ssimv = ssim(preds, truths)
-                    # ssim_values.append(float(ssimv))
-                    img = np.squeeze(preds.cpu().numpy(), axis=0)
-                    gt = np.squeeze(truths.cpu().numpy(), axis=0)
-                    val = compare_ssim(gt, img, 11, multichannel=True)
-                    ssim_values.append(float(val))
 
         average_loss = total_loss / self.local_step
         self.stats["valid_loss"].append(average_loss)
@@ -1028,7 +1018,6 @@ class Trainer(object):
         if self.ema is not None:
             self.ema.restore()
 
-        self.log(f"++> Test set average SSIM: {np.array(ssim_values).mean()}")
         self.log(f"++> Evaluate epoch {self.epoch} Finished.")
 
     def save_checkpoint(self, name=None, full=False, best=False, remove_old=True):

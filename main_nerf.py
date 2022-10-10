@@ -125,7 +125,7 @@ if __name__ == '__main__':
     
     if opt.test:
         
-        metrics = [PSNRMeter(), LPIPSMeter(device=device)]
+        metrics = [PSNRMeter(), LPIPSMeter(device=device), SSIMMeter()]
         trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, criterion=criterion, fp16=opt.fp16, metrics=metrics, use_checkpoint=opt.ckpt)
 
         if opt.gui:
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         # decay to 0.1 * init_lr at last iter step
         scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter / opt.iters, 1))
 
-        metrics = [PSNRMeter(), LPIPSMeter(device=device)]
+        metrics = [PSNRMeter(), LPIPSMeter(device=device), SSIMMeter()]
         trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=metrics, use_checkpoint=opt.ckpt, eval_interval=opt.eval_interval)
 
         if opt.gui:
