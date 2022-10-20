@@ -649,7 +649,8 @@ class Trainer(object):
 
         # get a ref to error_map
         self.error_map = train_loader._data.error_map
-        
+
+        self.evl_time = []
         for epoch in range(self.epoch + 1, max_epochs + 1):
             self.epoch = epoch
 
@@ -659,7 +660,13 @@ class Trainer(object):
                 self.save_checkpoint(full=True, best=False)
 
             if self.epoch % self.eval_interval == 0:
+                start = time.perf_counter()
                 self.evaluate_one_epoch(valid_loader)
+                end = time.perf_counter()
+                dur = end - start
+                print(dur)
+                print(f'epoch  {self.epoch}:'+str(dur))
+                self.evl_time.append(dur)
                 self.save_checkpoint(full=False, best=True)
 
         if self.use_tensorboardX and self.local_rank == 0:
