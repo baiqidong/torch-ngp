@@ -1,12 +1,11 @@
 import time
-
 import torch
 import argparse
 
 from nerf.provider import NeRFDataset
 from nerf.gui import NeRFGUI
 from nerf.utils import *
-from config import *
+from NerfReport import *
 
 from functools import partial
 from loss import huber_loss
@@ -15,8 +14,8 @@ from loss import huber_loss
 
 
 if __name__ == '__main__':
-    config = Config()
-    config.start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    report = NerfReport()
+    start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     print('[TIMESTAMP] start time:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
     parser = argparse.ArgumentParser()
@@ -52,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--view', type=str, default='yaw', help="view direction:random or yaw")
 
     ### evaluate options
-    parser.add_argument('--eval_interval', type=int, default=5, help="eval_interval")
+    parser.add_argument('--eval_interval', type=int, default=50, help="eval_interval")
 
     ### network backbone options
     parser.add_argument('--fp16', action='store_true', help="use amp mixed precision training")
@@ -158,8 +157,8 @@ if __name__ == '__main__':
 
             e_load_testdata_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             print('[TIMESTAMP] load test data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            config.load_testdata_time = take_up_time_format(s_load_testdata_time, e_load_testdata_time)
-            config.test_data_size = len(test_loader)
+            report.set_load_testdata_time(take_up_time_format(s_load_testdata_time, e_load_testdata_time))
+            report.set_test_data_size(len(test_loader))
 
             if test_loader.has_gt:
                 print('[TIMESTAMP] start evaluate:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
@@ -169,25 +168,20 @@ if __name__ == '__main__':
 
                 e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                 print('[TIMESTAMP] evaluate end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-                config.test_time = take_up_time_format(s_time, e_time)
-            else:
-                print('[TIMESTAMP] start test:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-                s_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                report.set_val_time(take_up_time_format(s_time, e_time))
 
-                trainer.test(test_loader, write_video=True)  # test and save video
-
-                e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                print('[TIMESTAMP] test end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-                config.test_time = take_up_time_format(s_time, e_time)
-
-            print('[TIMESTAMP] start save mesh:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            print('[TIMESTAMP] start test:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             s_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-            trainer.save_mesh(resolution=256, threshold=10)
+            trainer.test(test_loader, write_video=True)  # test and save video
 
             e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            print('[TIMESTAMP] test end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            report.set_test_time(take_up_time_format(s_time, e_time))
+
+            print('[TIMESTAMP] start save mesh:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            trainer.save_mesh(resolution=256, threshold=10)
             print('[TIMESTAMP] save mesh end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            config.save_mesh_time = take_up_time_format(s_time, e_time)
 
     else:
         optimizer = lambda model: torch.optim.Adam(model.get_params(opt.lr), betas=(0.9, 0.99), eps=1e-15)
@@ -199,13 +193,13 @@ if __name__ == '__main__':
 
         e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         print('[TIMESTAMP] load train data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        config.load_traindata_time = take_up_time_format(s_time, e_time)
+        report.set_load_traindata_time(take_up_time_format(s_time, e_time))
 
-        config.dataset_name = opt.path.split('/')[1]
-        config.train_data_size = len(train_loader)
-        config.datatype = opt.datatype
-        config.imagesize = opt.imagesize
-        config.image_mode = opt.image_mode
+        report.set_dataset_name(opt.path.split('/')[1])
+        report.set_train_data_size(len(train_loader))
+        report.set_datatype(opt.datatype)
+        report.set_imagesize(opt.imagesize)
+        report.set_image_mode(opt.image_mode)
 
         # decay to 0.1 * init_lr at last iter step
         scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer,
@@ -229,17 +223,16 @@ if __name__ == '__main__':
 
             e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             print('[TIMESTAMP] load val data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            config.load_valdata_time = take_up_time_format(s_time, e_time)
+            report.set_load_valdata_time(take_up_time_format(s_time, e_time))
 
-            config.val_data_size = len(valid_loader)
+            report.set_val_data_size(len(valid_loader))
 
             max_epoch = np.ceil(opt.iters / len(train_loader)).astype(np.int32)
             if opt.epochs != -1:
                 max_epoch = opt.epochs
 
-            config.epoch = max_epoch
-            config.batch_size = train_loader.batch_size
-            max_epoch = 2
+            report.set_epoch(max_epoch)
+            report.set_batch_size(train_loader.batch_size)
 
             print('[TIMESTAMP] start trainning:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             s_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -249,13 +242,17 @@ if __name__ == '__main__':
             e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             print('[TIMESTAMP] trainning end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             training_time = take_up_time(s_time, e_time)
+            report.set_loss_dict(trainer.loss_dict)
+            report.set_psnr_dict(trainer.psnr_dict)
+            report.set_ssim_dict(trainer.ssim_dict)
+            report.set_lpips_dict(trainer.lpips_dict)
 
             evl_sum = 0
             for i in trainer.evl_time:
                 evl_sum = evl_sum + i
             print('Val time:'+str(evl_sum))
-            config.val_time = time.strftime("%H:%M:%S", time.gmtime(evl_sum))
-            config.train_time = time.strftime("%H:%M:%S", time.gmtime(training_time-evl_sum))
+            report.set_val_time(time.strftime("%H:%M:%S", time.gmtime(evl_sum)))
+            report.set_train_time(time.strftime("%H:%M:%S", time.gmtime(training_time-evl_sum)))
 
             # also test
             print('[TIMESTAMP] start load test data:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
@@ -265,8 +262,8 @@ if __name__ == '__main__':
 
             e_load_testdata_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             print('[TIMESTAMP] load test data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            config.load_testdata_time = take_up_time_format(s_load_testdata_time, e_load_testdata_time)
-            config.test_data_size = len(test_loader)
+            report.set_load_testdata_time(take_up_time_format(s_load_testdata_time, e_load_testdata_time))
+            report.set_test_data_size(len(test_loader))
 
             if test_loader.has_gt:
                 print('[TIMESTAMP] start evaluate:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
@@ -276,32 +273,29 @@ if __name__ == '__main__':
 
                 e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                 print('[TIMESTAMP] evaluate end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-                config.test_time = take_up_time_format(s_time, e_time)
-            else:
-                print('[TIMESTAMP] start test:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-                s_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                report.set_val_time(time.strftime("%H:%M:%S", time.gmtime(evl_sum + take_up_time(s_time, e_time))))
+                print(report.get_val_time())
 
-                trainer.test(test_loader, write_video=True)  # test and save video
-
-                e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                print('[TIMESTAMP] test end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-                config.test_time = take_up_time_format(s_time, e_time)
-
-            print('[TIMESTAMP] start save mesh:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            print('[TIMESTAMP] start test:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             s_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-            trainer.save_mesh(resolution=256, threshold=10)
+            trainer.test(test_loader, write_video=True)  # test and save video
 
             e_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            print('[TIMESTAMP] save mesh end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            config.save_mesh_time = take_up_time_format(s_time, e_time)
+            print('[TIMESTAMP] test end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            report.set_test_time(take_up_time_format(s_time, e_time))
 
-    config.end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            print('[TIMESTAMP] start save mesh:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            trainer.save_mesh(resolution=256, threshold=10)
+            print('[TIMESTAMP] save mesh end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
+    end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     print('[TIMESTAMP] end time:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    config.total_time = take_up_time_format(config.start_time, config.end_time)
+    report.set_total_time(take_up_time_format(start_time, end_time))
 
     os.makedirs(opt.workspace, exist_ok=True)
-    report_path = os.path.join(opt.workspace, "report.txt")
+    report_path = os.path.join(opt.workspace, "torch-ngp_report.txt")
     log_ptr = open(report_path, "a+")
-    prn_obj(config, log_ptr)
+    prn_obj(report, log_ptr)
+
 
