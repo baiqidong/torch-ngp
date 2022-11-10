@@ -25,7 +25,7 @@ class NerfReport:
             self.ssim_dict = dict()
             self.lpips_dict = dict()
 
-            #dataset
+            # dataset
             self.imagesize = ""
             self.image_mode = ""
             # blender/colmap/llff/
@@ -35,20 +35,31 @@ class NerfReport:
             self.test_data_size = 0
             self.val_data_size = 0
 
-            #train parameter
+            # train parameter
             self.epoch = 0
             self.batch_size = 0
 
-            # self.start_time = ""
-            # self.end_time = ""
+            self.start_epoch = 0
             self.load_traindata_time = ""
             self.load_testdata_time = ""
             self.load_valdata_time = ""
-            # self.load_data_time = ""
             self.train_time = ""
             self.test_time = ""
             self.val_time = ""
             self.total_time = ""
+            self.process_name = ""
+
+    def set_process_name(self, process_name):
+        self.process_name = process_name
+
+    def get_process_name(self):
+        return self.process_name
+
+    def set_start_epoch(self, start_epoch):
+        self.start_epoch = start_epoch
+
+    def get_start_epoch(self):
+        return self.start_epoch
 
     def set_loss_dict(self, loss_dict):
         self.loss_dict = loss_dict
@@ -80,92 +91,92 @@ class NerfReport:
     def get_imagesize(self):
         return self.imagesize
 
-    def set_image_mode(self,image_mode):
-        self.image_mode =image_mode
+    def set_image_mode(self, image_mode):
+        self.image_mode = image_mode
 
     def get_image_mode(self):
         return self.image_mode
 
-    def set_datatype(self,datatype):
-        self.datatype =datatype
+    def set_datatype(self, datatype):
+        self.datatype = datatype
 
     def get_datatype(self):
         return self.datatype
 
-    def set_dataset_name(self,dataset_name):
-        self.dataset_name =dataset_name
+    def set_dataset_name(self, dataset_name):
+        self.dataset_name = dataset_name
 
     def get_dataset_name(self):
         return self.dataset_name
 
-    def set_train_data_size(self,train_data_size):
-        self.train_data_size =train_data_size
+    def set_train_data_size(self, train_data_size):
+        self.train_data_size = train_data_size
 
     def get_train_data_size(self):
         return self.train_data_size
 
-    def set_test_data_size(self,test_data_size):
-        self.test_data_size =test_data_size
+    def set_test_data_size(self, test_data_size):
+        self.test_data_size = test_data_size
 
     def get_test_data_size(self):
         return self.test_data_size
 
-    def set_val_data_size(self,val_data_size):
-        self.val_data_size =val_data_size
+    def set_val_data_size(self, val_data_size):
+        self.val_data_size = val_data_size
 
     def get_val_data_size(self):
         return self.val_data_size
 
-    def set_epoch(self,epoch):
-        self.epoch =epoch
+    def set_epoch(self, epoch):
+        self.epoch = epoch
 
     def get_epoch(self):
         return self.epoch
 
-    def set_batch_size(self,batch_size):
-        self.batch_size =batch_size
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
 
     def get_batch_size(self):
         return self.batch_size
 
-    def set_load_traindata_time(self,load_traindata_time):
-        self.load_traindata_time =load_traindata_time
+    def set_load_traindata_time(self, load_traindata_time):
+        self.load_traindata_time = load_traindata_time
 
     def get_load_traindata_time(self):
         return self.load_traindata_time
 
-    def set_load_testdata_time(self,load_testdata_time):
-        self.load_testdata_time =load_testdata_time
+    def set_load_testdata_time(self, load_testdata_time):
+        self.load_testdata_time = load_testdata_time
 
     def get_load_testdata_time(self):
         return self.load_testdata_time
 
-    def set_load_valdata_time(self,load_valdata_time):
-        self.load_valdata_time =load_valdata_time
+    def set_load_valdata_time(self, load_valdata_time):
+        self.load_valdata_time = load_valdata_time
 
     def get_load_valdata_time(self):
         return self.load_valdata_time
 
-    def set_train_time(self,train_time):
-        self.train_time =train_time
+    def set_train_time(self, train_time):
+        self.train_time = train_time
 
     def get_train_time(self):
         return self.train_time
 
-    def set_test_time(self,test_time):
-        self.test_time =test_time
+    def set_test_time(self, test_time):
+        self.test_time = test_time
 
     def get_test_time(self):
         return self.test_time
 
-    def set_val_time(self,val_time):
-        self.val_time =val_time
+    def set_val_time(self, val_time):
+        self.val_time = val_time
 
     def get_val_time(self):
         return self.val_time
 
-    def set_total_time(self,total_time):
-        self.total_time =total_time
+    def set_total_time(self, total_time):
+        self.total_time = total_time
 
     def get_total_time(self):
         return self.total_time
@@ -188,12 +199,34 @@ def get_processor_name():
         return os_version
 
 
-#gpu信息
-def get_gpu_info():
+# gpus
+def get_gpus(process_name):
+    command = "ixsmi -q"
+    all_info = subprocess.check_output(command, shell=True).decode().strip()
+    s = all_info.split("GPU 00000000")
+
+    gpus = ""
+    for i in range(len(s)):
+        ss = s[i].split(":")
+        for j in range(len(ss)):
+            if "python3" in ss[j]:
+                temp = ss[j].split("\n")[0]
+                if process_name.strip() == temp.strip():
+                    gpus += str(i) + " "
+    return gpus
+
+
+# gpu信息
+def get_gpu_info(obj):
     table = []
     command = "ixsmi"
     all_info = subprocess.check_output(command, shell=True).decode().strip()
     s = all_info.split("\n")
+    for i in range(len(s)):
+        if "Timestamp" in s[i]:
+            s = s[i:]
+            break
+
     ss = s[2].split()
     ss4 = s[4].split()
     ss5 = s[5].split()
@@ -202,25 +235,22 @@ def get_gpu_info():
     table.append([ss[1][:-1], ss[2]])  # IX-ML
     table.append([ss[3] + " " + ss[4][:-1], ss[5]])  # Driver Version
     table.append([ss[6] + " " + ss[7][:-1], ss[8]])  # CUDA Version
-
-    table.append([ss4[1], ss7[1]])  # GPU
     table.append([ss4[2], ss7[2] + " " + ss7[3]])  # Name
-    table.append([ss4[4], ss7[5]])  # Bus-Id
 
-    table.append([ss5[8] + " " + ss5[9], ss8[13]])  # Compute M.
-    table.append([ss5[3], ss8[3]])  # Perf
+    # table.append([ss4[1], ss7[1]])  # GPU
+    table.append([ss4[1], get_gpus(obj.process_name)])  # multiple GPU
 
     return table
 
 
-#cpu信息
+# cpu信息
 def get_cpu_infos():
     out = cpuinfo.get_cpu_info()
     cpu_info = [
-             ['brand_raw', str(out['brand_raw'])],
-             ['OS-Version', get_processor_name()],
-             ['arch', str(out['arch'])],
-             ['count', str(out['count'])]]
+        ['brand_raw', str(out['brand_raw'])],
+        ['OS-Version', get_processor_name()],
+        ['arch', str(out['arch'])],
+        ['count', str(out['count'])]]
 
     return cpu_info
 
@@ -228,7 +258,7 @@ def get_cpu_infos():
 def log(log_ptr, *args, **kwargs):
     Console().print(*args, **kwargs)
     print(*args, file=log_ptr)
-    log_ptr.flush() # write immediately to file
+    log_ptr.flush()  # write immediately to file
 
 
 def print_parameter(obj, log_ptr, train_parameter_table, train_parameter):
@@ -239,15 +269,12 @@ def print_parameter(obj, log_ptr, train_parameter_table, train_parameter):
 
 
 def prn_obj(obj, log_ptr):
-    # print('\n'.join(['%s:%s' % item for item in obj.__dict__.items()]))
-    # log(log_ptr, '\n'.join(['%s:%s' % item for item in obj.__dict__.items()]))
-
     log(log_ptr, "CPU Info: ")
     log(log_ptr, tabulate(get_cpu_infos(), tablefmt='grid'))
     log(log_ptr, "\n")
 
     log(log_ptr, "GPU Info: ")
-    log(log_ptr, tabulate(get_gpu_info(), tablefmt='grid'))
+    log(log_ptr, tabulate(get_gpu_info(obj), tablefmt='grid'))
     log(log_ptr, "\n")
 
     log(log_ptr, "Dataset: ")
@@ -264,28 +291,32 @@ def prn_obj(obj, log_ptr):
 
     log(log_ptr, "Performance: ")
     performance_table = []
-    performance = ['load_traindata_time', 'load_testdata_time', 'load_valdata_time',
+    performance = ['start_epoch', 'load_traindata_time', 'load_testdata_time', 'load_valdata_time',
                    'train_time', 'val_time', 'test_time', 'total_time']
     print_parameter(obj, log_ptr, performance_table, performance)
     log(log_ptr, "\n")
 
-    log(log_ptr, "Loss: ")
-    log(log_ptr, tabulate(list(obj.loss_dict.items()), tablefmt='grid'))
-    log(log_ptr, "\n")
+    if len(obj.loss_dict.items()) > 0:
+        log(log_ptr, "Loss: ")
+        log(log_ptr, tabulate(list(obj.loss_dict.items()), tablefmt='grid'))
+        log(log_ptr, "\n")
 
-    log(log_ptr, "PSNR: ")
-    log(log_ptr, tabulate(list(obj.psnr_dict.items()), tablefmt='grid'))
-    log(log_ptr, "\n")
+    if len(obj.psnr_dict.items()) > 0:
+        log(log_ptr, "PSNR: ")
+        log(log_ptr, tabulate(list(obj.psnr_dict.items()), tablefmt='grid'))
+        log(log_ptr, "\n")
 
-    log(log_ptr, "SSIM: ")
-    log(log_ptr, tabulate(list(obj.ssim_dict.items()), tablefmt='grid'))
-    log(log_ptr, "\n")
+    if len(obj.ssim_dict.items()) > 0:
+        log(log_ptr, "SSIM: ")
+        log(log_ptr, tabulate(list(obj.ssim_dict.items()), tablefmt='grid'))
+        log(log_ptr, "\n")
 
-    log(log_ptr, "LPIPS: ")
-    log(log_ptr, tabulate(list(obj.lpips_dict.items()), tablefmt='grid'))
+    if len(obj.lpips_dict.items()) > 0:
+        log(log_ptr, "LPIPS: ")
+        log(log_ptr, tabulate(list(obj.lpips_dict.items()), tablefmt='grid'))
 
 
-#根据开始时间戳和结束时间戳来求耗时
+# 根据开始时间戳和结束时间戳来求耗时
 def take_up_time_format(start_time, end_time):
     stime_stamp = time.mktime(time.strptime(start_time, "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
     etime_stamp = time.mktime(time.strptime(end_time, "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
@@ -301,27 +332,24 @@ def take_up_time(start_time, end_time):
 
 
 if __name__ == '__main__':
-    stime_stamp = time.mktime(time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
+    stime_stamp = time.mktime(
+        time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
     time.sleep(10)
-    etime_stamp = time.mktime(time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
+    etime_stamp = time.mktime(
+        time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
 
     print(time.strftime("%H:%M:%S", time.gmtime(etime_stamp - stime_stamp)))
 
-
-    stime_stamp = time.mktime(time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
+    stime_stamp = time.mktime(
+        time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
     time.sleep(10)
-    etime_stamp = time.mktime(time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
+    etime_stamp = time.mktime(
+        time.strptime(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "%Y-%m-%d %H:%M:%S"))  # 格式化后的时间转换成时间戳
 
     print(etime_stamp - stime_stamp)
-
 
     os.makedirs("workspace", exist_ok=True)
     report_path = os.path.join("workspace", "report.txt")
     log_ptr = open(report_path, "a+")
     # config = Config()
     # prn_obj(config, log_ptr)
-
-
-
-
-

@@ -655,6 +655,7 @@ class Trainer(object):
         self.psnr_dict = dict()
         self.ssim_dict = dict()
         self.lpips_dict = dict()
+        self.start_epoch = self.epoch + 1
         for epoch in range(self.epoch + 1, max_epochs + 1):
             self.epoch = epoch
 

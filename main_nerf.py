@@ -6,6 +6,7 @@ from nerf.provider import NeRFDataset
 from nerf.gui import NeRFGUI
 from nerf.utils import *
 from NerfReport import *
+import sys
 
 from functools import partial
 from loss import huber_loss
@@ -92,8 +93,12 @@ if __name__ == '__main__':
     parser.add_argument('--rand_pose', type=int, default=-1,
                         help="<0 uses no rand pose, =0 only uses rand pose, >0 sample one rand pose every $ known poses")
 
-    opt = parser.parse_args()
+    process_name = "python3 "
+    for i in sys.argv:
+        process_name += i + " "
+    report.set_process_name(process_name)
 
+    opt = parser.parse_args()
 
     if opt.O:
         opt.fp16 = True
@@ -246,6 +251,7 @@ if __name__ == '__main__':
             report.set_psnr_dict(trainer.psnr_dict)
             report.set_ssim_dict(trainer.ssim_dict)
             report.set_lpips_dict(trainer.lpips_dict)
+            report.set_start_epoch(trainer.start_epoch)
 
             evl_sum = 0
             for i in trainer.evl_time:
