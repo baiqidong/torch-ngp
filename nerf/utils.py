@@ -31,7 +31,6 @@ from torch_ema import ExponentialMovingAverage
 from packaging import version as pver
 import lpips
 
-
 try:
     from skimage.measure import compare_ssim
 except:
@@ -39,6 +38,7 @@ except:
 
     def compare_ssim(gt, img, win_size, multichannel=True):
         return structural_similarity(gt, img, win_size=win_size, multichannel=multichannel)
+
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -651,6 +651,12 @@ class Trainer(object):
         # get a ref to error_map
         self.error_map = train_loader._data.error_map
         
+        self.evl_time = []
+        self.loss_dict = dict()
+        self.psnr_dict = dict()
+        self.ssim_dict = dict()
+        self.lpips_dict = dict()
+        self.start_epoch = self.epoch + 1
         for epoch in range(self.epoch + 1, max_epochs + 1):
             self.epoch = epoch
 
@@ -660,7 +666,13 @@ class Trainer(object):
                 self.save_checkpoint(full=True, best=False)
 
             if self.epoch % self.eval_interval == 0:
+                start = time.perf_counter()
                 self.evaluate_one_epoch(valid_loader)
+                end = time.perf_counter()
+                dur = end - start
+                print(dur)
+                print(f'epoch  {self.epoch}:'+str(dur))
+                self.evl_time.append(dur)
                 self.save_checkpoint(full=False, best=True)
 
         if self.use_tensorboardX and self.local_rank == 0:
@@ -903,15 +915,15 @@ class Trainer(object):
         average_loss = total_loss / self.local_step
         self.stats["loss"].append(average_loss)
 
+        if self.epoch % self.eval_interval == 0:
+            self.loss_dict[time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())] = \
+                str(round(average_loss, 6))
+
         if self.local_rank == 0:
             pbar.close()
             if self.report_metric_at_train:
                 for metric in self.metrics:
                     self.log(metric.report(), style="red")
-                    if self.use_tensorboardX:
-                        metric.write(self.writer, self.epoch, prefix="train")
-                    metric.clear()
-
         if not self.scheduler_update_every_step:
             if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                 self.lr_scheduler.step(average_loss)
@@ -1012,6 +1024,17 @@ class Trainer(object):
 
             for metric in self.metrics:
                 self.log(metric.report(), style="blue")
+                # if self.epoch % self.report_interval == 0:
+                if isinstance(metric, PSNRMeter):
+                    self.psnr_dict[time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())] = \
+                        metric.report().split('=')[1]
+                if isinstance(metric, SSIMMeter):
+                    self.ssim_dict[time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())] = \
+                        metric.report().split('=')[1]
+                if isinstance(metric, LPIPSMeter):
+                    self.lpips_dict[time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())] = \
+                        metric.report().split('=')[1]
+
                 if self.use_tensorboardX:
                     metric.write(self.writer, self.epoch, prefix="evaluate")
                 metric.clear()
