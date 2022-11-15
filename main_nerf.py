@@ -302,6 +302,6 @@ if __name__ == '__main__':
     os.makedirs(opt.workspace, exist_ok=True)
     report_path = os.path.join(opt.workspace, "torch-ngp_report.txt")
     log_ptr = open(report_path, "a+")
-    prn_obj(report, log_ptr)
+    prn_obj(report, log_ptr, opt)
 
 

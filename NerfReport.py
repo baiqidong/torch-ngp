@@ -213,6 +213,13 @@ def get_gpus(process_name):
                 temp = ss[j].split("\n")[0]
                 if process_name.strip() == temp.strip():
                     gpus += str(i) + " "
+
+    #there is no hostpid in job
+    if gpus == "":
+        ss = all_info.split("\n")
+        for i in range(len(ss)):
+            if "Minor" in ss[i]:
+                gpus += ss[i].split(':')[1]
     return gpus
 
 
@@ -261,14 +268,18 @@ def log(log_ptr, *args, **kwargs):
     log_ptr.flush()  # write immediately to file
 
 
-def print_parameter(obj, log_ptr, train_parameter_table, train_parameter):
+def print_parameter(obj, log_ptr, train_parameter, *params):
+    train_parameter_table = []
     for item in vars(obj).items():
         if item[0] in train_parameter:
+            train_parameter_table.append(list(item))
+    if len(params) > 0:
+        for item in vars(params[0]).items():
             train_parameter_table.append(list(item))
     log(log_ptr, tabulate(train_parameter_table, tablefmt='grid'))
 
 
-def prn_obj(obj, log_ptr):
+def prn_obj(obj, log_ptr, params):
     log(log_ptr, "CPU Info: ")
     log(log_ptr, tabulate(get_cpu_infos(), tablefmt='grid'))
     log(log_ptr, "\n")
@@ -278,22 +289,19 @@ def prn_obj(obj, log_ptr):
     log(log_ptr, "\n")
 
     log(log_ptr, "Dataset: ")
-    data_table = []
     data = ['imagesize', 'image_mode', 'datatype', 'dataset_name', 'train_data_size', 'test_data_size', 'val_data_size']
-    print_parameter(obj, log_ptr, data_table, data)
+    print_parameter(obj, log_ptr, data)
     log(log_ptr, "\n")
 
     log(log_ptr, "Train Parameters: ")
-    train_parameter_table = []
     train_parameter = ['epoch', 'batch_size']
-    print_parameter(obj, log_ptr, train_parameter_table, train_parameter)
+    print_parameter(obj, log_ptr, train_parameter, params)
     log(log_ptr, "\n")
 
     log(log_ptr, "Performance: ")
-    performance_table = []
     performance = ['start_epoch', 'load_traindata_time', 'load_testdata_time', 'load_valdata_time',
                    'train_time', 'val_time', 'test_time', 'total_time']
-    print_parameter(obj, log_ptr, performance_table, performance)
+    print_parameter(obj, log_ptr, performance)
     log(log_ptr, "\n")
 
     if len(obj.loss_dict.items()) > 0:
@@ -351,5 +359,5 @@ if __name__ == '__main__':
     os.makedirs("workspace", exist_ok=True)
     report_path = os.path.join("workspace", "report.txt")
     log_ptr = open(report_path, "a+")
-    # config = Config()
+    # config = NerfReport()
     # prn_obj(config, log_ptr)
