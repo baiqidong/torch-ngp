@@ -120,6 +120,12 @@ class NeRFDataset:
         self.image_mode = ""
 
         # auto-detect transforms.json and split mode.
+        for root, dirs, files in os.walk(self.root_path):
+            for file_name in files:
+                if ".json" in file_name:
+                    self.root_path = root
+                    break
+
         if os.path.exists(os.path.join(self.root_path, 'transforms.json')):
             self.mode = 'colmap' # manually split, use view-interpolation for test.
         elif os.path.exists(os.path.join(self.root_path, 'transforms_train.json')):
