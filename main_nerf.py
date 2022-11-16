@@ -1,3 +1,4 @@
+import copy
 import time
 import torch
 import argparse
@@ -122,6 +123,7 @@ if __name__ == '__main__':
         from nerf.network import NeRFNetwork
 
     print(opt)
+    params = copy.deepcopy(opt)
     seed_everything(opt.seed)
 
     model = NeRFNetwork(
@@ -302,6 +304,6 @@ if __name__ == '__main__':
     os.makedirs(opt.workspace, exist_ok=True)
     report_path = os.path.join(opt.workspace, "torch-ngp_report.txt")
     log_ptr = open(report_path, "a+")
-    prn_obj(report, log_ptr, opt)
+    prn_obj(report, log_ptr, params)
 
 
