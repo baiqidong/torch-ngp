@@ -202,7 +202,13 @@ if __name__ == '__main__':
         print('[TIMESTAMP] load train data end:', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         report.set_load_traindata_time(take_up_time_format(s_time, e_time))
 
-        report.set_dataset_name(opt.path.split('/')[1])
+        if (os.path.exists(os.path.join(opt.path, 'transforms.json'))) or \
+                (os.path.exists(os.path.join(opt.path, 'transforms_train.json'))):
+            report.set_dataset_name("")
+        else:
+            report.set_dataset_name(opt.dataset_name)
+
+        print(report.get_dataset_name())
         report.set_train_data_size(len(train_loader))
         report.set_datatype(opt.datatype)
         report.set_imagesize(opt.imagesize)
