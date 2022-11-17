@@ -125,7 +125,7 @@ class NeRFDataset:
                 if ".json" in file_name:
                     self.root_path = root
                     break
-        opt.dataset_name = opt.root_path.split('/')[-1]
+        opt.dataset_name = self.root_path.split('/')[-1]
 
         # auto-detect transforms.json and split mode.
         if os.path.exists(os.path.join(self.root_path, 'transforms.json')):
