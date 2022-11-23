@@ -50,7 +50,7 @@ if __name__ == '__main__':
     ### test options
     parser.add_argument('--fps', type=int, default=15, help="test video fps")
     parser.add_argument('--duration', type=int, default=10, help="video duration second")
-    parser.add_argument('--view', type=str, default='yaw', help="view direction:random or yaw")
+    parser.add_argument('--view', type=str, default='yaw', help="view direction:random or yaw or forward")
 
     ### evaluate options
     parser.add_argument('--eval_interval', type=int, default=50, help="eval_interval")
