@@ -8,7 +8,7 @@ import numpy as np
 from scipy.spatial.transform import Slerp, Rotation
 
 import trimesh
-
+import copy
 import torch
 from torch.utils.data import DataLoader
 
@@ -192,6 +192,12 @@ class NeRFDataset:
             
             pose_center = np.eye(4, dtype=np.float32)
             pose_center[:3, 3] = np.array([0, 0, 0])
+
+            # todo temp
+            if self.view == 'forward':
+                pose_center[:3, 3] = Rotation.from_euler('y', [180], degrees=True).as_matrix()
+                pose_end = np.matmul(pose_center, pose0)
+
             for i in range(0, 360, int(360/n_test)):
                 if self.view == 'random':
                     ratio = np.sin(((i / n_test) - 0.5) * np.pi) * 0.5 + 0.5
@@ -206,6 +212,9 @@ class NeRFDataset:
                 elif self.view == 'roll':
                     pose_center[:3, :3] = Rotation.from_euler('z', [i], degrees=True).as_matrix()
                     pose = np.matmul(pose_center, pose0)
+                elif self.view == 'forward':
+                    pose = copy.deepcopy(pose0)
+                    pose[:3, 3] = pose0[:3, 3] + (pose_end[:3, 3] - pose0[:3, 3]) * i / 720
                 self.poses.append(pose)
         else:
             # for colmap, manually split a valid set (the first frame).
