@@ -276,7 +276,8 @@ def print_parameter(obj, log_ptr, train_parameter, *params):
     if len(params) > 0:
         for item in vars(params[0]).items():
             train_parameter_table.append(list(item))
-    log(log_ptr, tabulate(train_parameter_table, tablefmt='grid', maxcolwidths=[None, 100]))
+    log(log_ptr, tabulate(train_parameter_table, tablefmt='grid'))
+    #log(log_ptr, tabulate(train_parameter_table, tablefmt='grid', maxcolwidths=[None, 100]))
 
 
 def prn_obj(obj, log_ptr, params):

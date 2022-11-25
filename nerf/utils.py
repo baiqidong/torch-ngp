@@ -1010,64 +1010,6 @@ class Trainer(object):
                 pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                 pbar.update(loader.batch_size)
 
-            # for data in loader:
-            #     self.local_step += 1
-            #
-            #     with torch.cuda.amp.autocast(enabled=self.fp16):
-            #         preds, preds_depth, truths, loss = self.eval_step(data)
-            #
-            #     # all_gather/reduce the statistics (NCCL only support all_*)
-            #     if self.world_size > 1:
-            #         dist.all_reduce(loss, op=dist.ReduceOp.SUM)
-            #         loss = loss / self.world_size
-            #
-            #         preds_list = [torch.zeros_like(preds).to(self.device) for _ in
-            #                       range(self.world_size)]  # [[B, ...], [B, ...], ...]
-            #         dist.all_gather(preds_list, preds)
-            #         preds = torch.cat(preds_list, dim=0)
-            #
-            #         preds_depth_list = [torch.zeros_like(preds_depth).to(self.device) for _ in
-            #                             range(self.world_size)]  # [[B, ...], [B, ...], ...]
-            #         dist.all_gather(preds_depth_list, preds_depth)
-            #         preds_depth = torch.cat(preds_depth_list, dim=0)
-            #
-            #         truths_list = [torch.zeros_like(truths).to(self.device) for _ in
-            #                        range(self.world_size)]  # [[B, ...], [B, ...], ...]
-            #         dist.all_gather(truths_list, truths)
-            #         truths = torch.cat(truths_list, dim=0)
-            #
-            #     loss_val = loss.item()
-            #     total_loss += loss_val
-            #
-            #     # only rank = 0 will perform evaluation.
-            #     if self.local_rank == 0:
-            #
-            #         for metric in self.metrics:
-            #             metric.update(preds, truths)
-            #
-            #         # save image
-            #         save_path = os.path.join(self.workspace, 'validation', f'{name}_{self.local_step:04d}_rgb.png')
-            #         save_path_depth = os.path.join(self.workspace, 'validation',
-            #                                        f'{name}_{self.local_step:04d}_depth.png')
-            #
-            #         # self.log(f"==> Saving validation image to {save_path}")
-            #         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            #
-            #         if self.opt.color_space == 'linear':
-            #             preds = linear_to_srgb(preds)
-            #
-            #         pred = preds[0].detach().cpu().numpy()
-            #         pred = (pred * 255).astype(np.uint8)
-            #
-            #         pred_depth = preds_depth[0].detach().cpu().numpy()
-            #         pred_depth = (pred_depth * 255).astype(np.uint8)
-            #
-            #         cv2.imwrite(save_path, cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
-            #         cv2.imwrite(save_path_depth, pred_depth)
-            #
-            #         pbar.set_description(f"loss={loss_val:.4f} ({total_loss / self.local_step:.4f})")
-            #         pbar.update(loader.batch_size)
-
         average_loss = total_loss / self.local_step
         self.stats["valid_loss"].append(average_loss)
 
