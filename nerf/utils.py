@@ -718,7 +718,7 @@ class Trainer(object):
                 pred_depth = preds_depth[0].detach().cpu().numpy()
                 pred_depth = (pred_depth * 255).astype(np.uint8)
 
-                if write_video:
+                if write_video and i < len(loader) - 1:
                     all_preds.append(pred)
                     all_preds_depth.append(pred_depth)
                 else:
