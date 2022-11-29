@@ -51,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--fps', type=int, default=15, help="test video fps")
     parser.add_argument('--duration', type=int, default=10, help="video duration second")
     parser.add_argument('--view', type=str, default='yaw', help="view direction:random or yaw or forward")
-    parser.add_argument('--camerapos', nargs=6, type=float, default=[0, 0, 0, 1, 1, 1])
+    parser.add_argument('--camerapos', nargs=6, type=float, default=[360, 360, 360, 1, 1, 1], help="6 DoF camera pose. No.1 to No.3 are roll, pitch, yaw angles, which rotate around the x-y-z axis respectively. No.4 to No.6 are translations of x-y-z axis.")
 
     ### evaluate options
     parser.add_argument('--eval_interval', type=int, default=50, help="eval_interval")

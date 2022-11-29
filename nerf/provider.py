@@ -187,6 +187,20 @@ class NeRFDataset:
             rots = Rotation.from_matrix(np.stack([pose0[:3, :3], pose1[:3, :3]]))
             slerp = Slerp([0, 1], rots)
 
+            if self.opt.camerapos[0] == 360 and self.opt.camerapos[1] == 360 and self.opt.camerapos[2] == 360:
+                rx = Rotation.from_euler('x', [self.opt.camerapos[0]], degrees=True).as_matrix()
+                ry = Rotation.from_euler('y', [self.opt.camerapos[1]], degrees=True).as_matrix()
+                rz = Rotation.from_euler('z', [self.opt.camerapos[2]], degrees=True).as_matrix()
+                rx = np.squeeze(rx)
+                ry = np.squeeze(ry)
+                rz = np.squeeze(rz)
+                r = np.dot(rz, np.dot(ry, rx))
+                pose0 = np.eye(4, dtype=np.float32)
+                pose0[:3, :3] = r
+                pose0[0, 3] = self.opt.camerapos[3]
+                pose0[1, 3] = self.opt.camerapos[4]
+                pose0[2, 3] = self.opt.camerapos[5]
+
             self.poses = []
             self.images = None
             
@@ -216,20 +230,6 @@ class NeRFDataset:
                     pose = copy.deepcopy(pose0)
                     pose[:3, 3] = pose0[:3, 3] + (pose_end[:3, 3] - pose0[:3, 3]) * i / 720
                 self.poses.append(pose)
-
-            rx = Rotation.from_euler('x', [self.opt.camerapos[0]], degrees=True).as_matrix()
-            ry = Rotation.from_euler('y', [self.opt.camerapos[1]], degrees=True).as_matrix()
-            rz = Rotation.from_euler('z', [self.opt.camerapos[2]], degrees=True).as_matrix()
-            rx = np.squeeze(rx)
-            ry = np.squeeze(ry)
-            rz = np.squeeze(rz)
-            r = np.dot(rz, np.dot(ry, rx))
-            pose = np.eye(4, dtype=np.float32)
-            pose[:3, :3] = r
-            pose[0, 3] = self.opt.camerapos[3]
-            pose[1, 3] = self.opt.camerapos[4]
-            pose[2, 3] = self.opt.camerapos[5]
-            self.poses.append(pose)
 
         else:
             # for colmap, manually split a valid set (the first frame).

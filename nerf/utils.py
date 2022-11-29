@@ -718,7 +718,11 @@ class Trainer(object):
                 pred_depth = preds_depth[0].detach().cpu().numpy()
                 pred_depth = (pred_depth * 255).astype(np.uint8)
 
-                if write_video and i < len(loader) - 1:
+                if i == 0:
+                    cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_rgb.png'), cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
+                    cv2.imwrite(os.path.join(save_path, f'{name}_{i:04d}_depth.png'), pred_depth)
+
+                if write_video:
                     all_preds.append(pred)
                     all_preds_depth.append(pred_depth)
                 else:
