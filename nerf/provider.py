@@ -187,7 +187,7 @@ class NeRFDataset:
             rots = Rotation.from_matrix(np.stack([pose0[:3, :3], pose1[:3, :3]]))
             slerp = Slerp([0, 1], rots)
 
-            if self.opt.camerapos[0] == 360 and self.opt.camerapos[1] == 360 and self.opt.camerapos[2] == 360:
+            if self.opt.camerapos[0] != 360 or self.opt.camerapos[1] != 360 or self.opt.camerapos[2] != 360:
                 rx = Rotation.from_euler('x', [self.opt.camerapos[0]], degrees=True).as_matrix()
                 ry = Rotation.from_euler('y', [self.opt.camerapos[1]], degrees=True).as_matrix()
                 rz = Rotation.from_euler('z', [self.opt.camerapos[2]], degrees=True).as_matrix()
